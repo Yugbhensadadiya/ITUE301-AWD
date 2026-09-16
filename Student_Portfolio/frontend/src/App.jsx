@@ -1,23 +1,26 @@
-import React, { useState, useEffect } from 'react';
-// import './App.css';
-import Navbar from './components/Navbar';
-import Header from './components/Header';
-import About from './components/About';
-import Skills from './components/Skills';
-import Projects from './components/Projects';
+import React, { useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import './App.css';
+import NavBar from './components/NavBar';
 import Footer from './components/Footer';
+import Home from './pages/Home';
+import Projects from './pages/Projects';
+import Contact from './pages/Contact';
+import NotFound from './pages/NotFound';
 
+/**
+ * Practical 2: React Router & useState State Management
+ * - React Router v6 Routes:
+ *   "/"         -> Home (Profile, About, Skills)
+ *   "/projects" -> Projects (Practical 1 Projects)
+ *   "/contact"  -> Contact (Controlled input, character counter, UI toggle)
+ *   "*"         -> NotFound (404 Page)
+ * - State Management with useState:
+ *   isDarkMode  -> Light/Dark Theme toggle
+ */
 function App() {
-  const [activeSection, setActiveSection] = useState('about');
-
-  useEffect(() => {
-    if (window.location.hash) {
-      const el = document.querySelector(window.location.hash);
-      if (el) {
-        el.scrollIntoView({ behavior: 'auto', block: 'start' });
-      }
-    }
-  }, []);
+  // Theme state: useState hook for toggling between Dark and Light mode
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   // Student Portfolio Data (Sourced directly from Yug Bhensadadiya's Resume)
   const studentProfile = {
@@ -54,7 +57,7 @@ function App() {
     ],
   };
 
-  // Step 4 & 6: Array of skills passed as prop to Skills component
+  // Skill List from Practical 1
   const skillList = [
     'Python',
     'C++',
@@ -76,7 +79,7 @@ function App() {
     'Docker & Tools',
   ];
 
-  // Categorized skills mapped for rich display
+  // Categorized skills mapped for display
   const categorizedSkills = {
     languages: ['Python', 'C++', 'Java', 'JavaScript'],
     frontend: ['HTML5', 'CSS3', 'JavaScript', 'React.js', 'Next.js'],
@@ -86,7 +89,7 @@ function App() {
     tools: ['Git', 'GitHub', 'VS Code', 'Postman'],
   };
 
-  // Post Lab Work: 3 projects list passed as prop to Projects component
+  // 3 Projects from Practical 1
   const projectList = [
     {
       id: 1,
@@ -132,50 +135,50 @@ function App() {
   const courseInfo = {
     code: 'ITUE301',
     title: 'Advanced Web Development',
-    practical: 'Practical 1: Introduction to React and Component Architecture',
+    practical: 'Practical 2: React Router & useState State Management',
   };
 
-  // Permanent Cyan theme color
   const themeColor = '#06b6d4';
 
   return (
-    <div className="portfolio-app">
-      {/* 1. Reusable Navbar Component */}
-      <Navbar
-        activeSection={activeSection}
-        setActiveSection={setActiveSection}
-        studentName={studentProfile.name}
-      />
+    <div className={`portfolio-app ${isDarkMode ? 'dark-theme' : 'light-theme'}`}>
+      {/* 1. Reusable NavBar Component with Navigation Links and Theme Toggle */}
+      <NavBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
 
+      {/* 2. Main Content routed dynamically via React Router (No full-page reload) */}
       <main className="main-container">
-        {/* 2. Reusable Header Component with themeColor inline style prop */}
-        <Header
-          name={studentProfile.name}
-          role={studentProfile.role}
-          university={studentProfile.university}
-          themeColor={themeColor}
-          targetRoles={studentProfile.targetRoles}
-        />
+        <Routes>
+          {/* Route 1: Home Page */}
+          <Route
+            path="/"
+            element={
+              <Home
+                studentProfile={studentProfile}
+                skillList={skillList}
+                categorizedSkills={categorizedSkills}
+                themeColor={themeColor}
+              />
+            }
+          />
 
-        {/* 3. Reusable About Component */}
-        <About
-          summary={studentProfile.summary}
-          education={studentProfile.education}
-          experience={studentProfile.internship}
-          strengths={studentProfile.strengths}
-        />
+          {/* Route 2: Projects Page */}
+          <Route
+            path="/projects"
+            element={<Projects projectList={projectList} />}
+          />
 
-        {/* 4. Reusable Skills Component with skillList prop */}
-        <Skills
-          skillList={skillList}
-          categorizedSkills={categorizedSkills}
-        />
+          {/* Route 3: Contact Page with controlled input & UI visibility toggling */}
+          <Route
+            path="/contact"
+            element={<Contact studentProfile={studentProfile} />}
+          />
 
-        {/* 5. Reusable Projects Component (Post Lab Requirement) */}
-        <Projects projectList={projectList} />
+          {/* Route 4: 404 Not Found Page */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </main>
 
-      {/* 6. Reusable Footer Component */}
+      {/* 3. Reusable Footer Component */}
       <Footer
         author={studentProfile.name}
         github="https://github.com/YugBhensadadiya"

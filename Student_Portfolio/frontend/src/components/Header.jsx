@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 function Header({ name, role, university, themeColor, targetRoles }) {
   // Theme color prop applied as inline style as required by supplementary problem
@@ -47,19 +48,20 @@ function Header({ name, role, university, themeColor, targetRoles }) {
         )}
 
         <div className="hero-actions">
-          <a href="#projects" className="btn-primary" style={{ backgroundColor: themeColor }}>
+          <Link to="/projects" className="btn-primary" style={{ backgroundColor: themeColor }}>
             View My Projects
-          </a>
+          </Link>
           <a href="#skills" className="btn-secondary">
             Explore Skills
           </a>
-          <a href="#contact" className="btn-outline">
+          <Link to="/contact" className="btn-outline">
             Get In Touch
-          </a>
+          </Link>
         </div>
       </div>
     </section>
   );
 }
+
 
 export default Header;
