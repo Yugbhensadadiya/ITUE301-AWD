@@ -2,106 +2,243 @@ import React, { useState } from 'react';
 
 /**
  * Contact Page Component
- * Demonstrates Practical 2 State Management:
- * 1. Controlled Form Input (message) using useState hook.
- * 2. Real-time live message preview and dynamic character counter.
- * 3. Conditional UI visibility toggle (showContactInfo) using second useState hook.
+ * 
+ * Practical 2 & Practical 5 Integration:
+ * 1. Practical 2: Controlled Form Inputs (name & message) using useState.
+ * 2. Practical 2: Dynamic Character Counter & Live Synchronous Preview.
+ * 3. Practical 2: Conditional UI visibility toggle (Contact Details & Viva Note).
+ * 4. Practical 5 Extension: Direct MongoDB Integration via Express REST API.
+ *    - Sends POST http://localhost:5000/tasks
+ *    - Persists document in MongoDB Compass (taskmanager.tasks)
+ *    - Frontend validation & clean error/success state handling.
  */
 function Contact({ studentProfile }) {
-  // State 1: Controlled input state for user message
+  // Practical 2 - State 1: Controlled input state for user message
   const [message, setMessage] = useState('');
 
-  // State 2: Boolean state to toggle visibility of contact details
+  // Practical 2 - State 2: Controlled sender name
+  const [senderName, setSenderName] = useState('');
+
+  // Practical 2 - State 3: Boolean state to toggle visibility of contact details
   const [showContactInfo, setShowContactInfo] = useState(true);
 
-  // Optional extra state: Quick Help / Guidance message toggle
+  // Practical 2 - State 4: Quick Help / Guidance message toggle
   const [showHelp, setShowHelp] = useState(false);
 
-  // Optional: Controlled sender name
-  const [senderName, setSenderName] = useState('');
+  // Practical 5 Extension State: Submission loading, status message, and validation errors
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState({ text: '', type: '' });
+  const [validationErrors, setValidationErrors] = useState({ name: '', message: '' });
+
+  /**
+   * Practical 5 Handler: Send POST request to Express API to save data to MongoDB.
+   * Target endpoint: POST http://localhost:5000/tasks
+   * Payload: { title: senderName, description: message }
+   */
+  const handleSaveToMongoDB = async (e) => {
+    e.preventDefault();
+
+    // Reset previous notifications
+    setStatusMessage({ text: '', type: '' });
+
+    // Step 1: Frontend Validation (Name and Message cannot be empty)
+    const errors = {};
+    if (!senderName || senderName.trim() === '') {
+      errors.name = 'Name is required.';
+    }
+    if (!message || message.trim() === '') {
+      errors.message = 'Message is required.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      setStatusMessage({
+        text: 'Please provide both Name and Message before saving.',
+        type: 'error'
+      });
+      return;
+    }
+
+    setValidationErrors({ name: '', message: '' });
+    setIsSubmitting(true);
+
+    try {
+      // Step 2: Send POST request to backend Express API
+      const response = await fetch('http://localhost:5000/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: senderName.trim(),
+          description: message.trim()
+        })
+      });
+
+      const data = await response.json();
+
+      // Step 3: Handle API Error Responses
+      if (!response.ok) {
+        throw new Error(data.error || `Server responded with HTTP status ${response.status}`);
+      }
+
+      // Step 4: Handle Successful MongoDB Persistence
+      setStatusMessage({
+        text: `Task saved successfully to MongoDB! (ID: ${data.task?._id || 'Saved'})`,
+        type: 'success'
+      });
+
+      // Clear both form fields and reset character counter
+      setSenderName('');
+      setMessage('');
+
+    } catch (err) {
+      console.error('MongoDB Submission Error:', err);
+      const isNetworkError = err.message.includes('Failed to fetch') || err.message.includes('NetworkError');
+      setStatusMessage({
+        text: isNetworkError
+          ? 'Unable to connect to backend server at http://localhost:5000. Please ensure the Express server is running (npm start).'
+          : `Error: ${err.message}`,
+        type: 'error'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Helper to clear form and reset state
+  const handleClearForm = () => {
+    setSenderName('');
+    setMessage('');
+    setValidationErrors({ name: '', message: '' });
+    setStatusMessage({ text: '', type: '' });
+  };
 
   return (
     <div className="page-container contact-page">
       <section className="portfolio-section">
         {/* Section Header */}
         <div className="section-header">
-          <span className="section-subtitle">Get In Touch</span>
-          <h2 className="section-title">Contact &amp; Feedback</h2>
+          <span className="section-subtitle">Practical 2 &amp; Practical 5 Integration</span>
+          <h2 className="section-title">Contact &amp; MongoDB Storage</h2>
           <div className="section-divider"></div>
           <p className="section-lead">
-            Demonstrating React controlled input state and conditional UI rendering.
+            Demonstrating React controlled inputs, character counting, and full-stack integration with Express &amp; MongoDB.
           </p>
         </div>
 
         <div className="contact-container">
-          {/* Card 1: Controlled Input Form & Real-time Sync */}
+          {/* Card 1: Controlled Input Form & MongoDB Save */}
           <div className="contact-card">
-            <span className="viva-badge">State Variable 1: Controlled Input</span>
+            <span className="viva-badge">Practical 5 • MongoDB Connected</span>
             <h3 className="card-heading">Send a Direct Message</h3>
             <p className="card-subtext">
-              Type a message below. The text is stored in React state and synced in real time.
+              Type a name and message below. Save it directly to the <code>taskmanager</code> MongoDB database.
             </p>
 
-            <form onSubmit={(e) => e.preventDefault()}>
+            {/* Status Alert Notification (Success / Error) */}
+            {statusMessage.text && (
+              <div
+                className={`mongo-status-alert ${
+                  statusMessage.type === 'success' ? 'status-success' : 'status-error'
+                }`}
+                role="alert"
+              >
+                <span className="status-icon">
+                  {statusMessage.type === 'success' ? '✅' : '⚠️'}
+                </span>
+                <span className="status-text">{statusMessage.text}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveToMongoDB}>
+              {/* Name Input */}
               <div className="form-group">
                 <label htmlFor="sender-name" className="form-label">
-                  Your Name:
+                  Your Name: <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
                   id="sender-name"
                   type="text"
-                  className="form-input"
-                  placeholder="e.g. Alex Smith"
+                  className={`form-input ${validationErrors.name ? 'input-error' : ''}`}
+                  placeholder="e.g. Yug Bhensadadiya"
                   value={senderName}
-                  onChange={(e) => setSenderName(e.target.value)}
+                  onChange={(e) => {
+                    setSenderName(e.target.value);
+                    if (validationErrors.name) setValidationErrors((prev) => ({ ...prev, name: '' }));
+                  }}
+                  disabled={isSubmitting}
                 />
+                {validationErrors.name && (
+                  <span className="field-error-text">{validationErrors.name}</span>
+                )}
               </div>
 
+              {/* Message Textarea */}
               <div className="form-group">
                 <label htmlFor="contact-message" className="form-label">
-                  Your Message:
+                  Your Message: <span style={{ color: '#ef4444' }}>*</span>
                 </label>
-                {/* Controlled textarea bound to 'message' state */}
                 <textarea
                   id="contact-message"
-                  className="form-textarea"
+                  className={`form-textarea ${validationErrors.message ? 'input-error' : ''}`}
                   rows="4"
-                  placeholder="Type your message here to see live state preview..."
+                  placeholder="Type your message here (e.g. Hello MongoDB)..."
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    if (validationErrors.message) setValidationErrors((prev) => ({ ...prev, message: '' }));
+                  }}
+                  disabled={isSubmitting}
                 />
 
-                {/* Live Character Count Requirement */}
+                {/* Dynamic Character Counter (Practical 2 Requirement) */}
                 <div className="char-counter-bar">
                   <span>Dynamic Counter</span>
                   <span className="char-counter-badge">
                     {message.length} characters
                   </span>
                 </div>
+                {validationErrors.message && (
+                  <span className="field-error-text">{validationErrors.message}</span>
+                )}
               </div>
 
-              {/* Quick clear button */}
-              {message.length > 0 && (
+              {/* Form Action Buttons */}
+              <div className="form-actions-group">
                 <button
-                  type="button"
-                  onClick={() => setMessage('')}
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '0.8rem',
-                    borderRadius: '6px',
-                    border: '1px solid var(--border-color)',
-                    background: 'transparent',
-                    color: 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    marginTop: '4px',
-                  }}
+                  type="submit"
+                  className="btn-save-mongo"
+                  disabled={isSubmitting}
                 >
-                  Clear Message
+                  {isSubmitting ? (
+                    <>
+                      <span className="btn-spinner"></span>
+                      <span>Saving to MongoDB...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🍃</span>
+                      <span>Save to MongoDB</span>
+                    </>
+                  )}
                 </button>
-              )}
+
+                {/* Clear Form Button */}
+                {(message.length > 0 || senderName.length > 0) && (
+                  <button
+                    type="button"
+                    className="btn-clear-form"
+                    onClick={handleClearForm}
+                    disabled={isSubmitting}
+                  >
+                    Clear Form
+                  </button>
+                )}
+              </div>
             </form>
 
-            {/* Real-Time Live Message Preview */}
+            {/* Real-Time Live Message Preview (Practical 2 Requirement) */}
             <div className="preview-box">
               <div className="preview-header">
                 <span className="preview-pulse"></span>
@@ -122,7 +259,7 @@ function Contact({ studentProfile }) {
             </div>
           </div>
 
-          {/* Card 2: UI Visibility Toggling using useState */}
+          {/* Card 2: UI Visibility Toggling using useState (Practical 2 Requirement) */}
           <div className="contact-card">
             <span className="viva-badge">State Variable 2: UI Visibility Toggle</span>
             <h3 className="card-heading">Contact Information</h3>
@@ -195,7 +332,7 @@ function Contact({ studentProfile }) {
               </div>
             )}
 
-            {/* Additional Help Message Toggle */}
+            {/* Additional Help / Viva Concept Note Toggle */}
             <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
               <button
                 type="button"
@@ -217,7 +354,7 @@ function Contact({ studentProfile }) {
 
               {showHelp && (
                 <div className="help-box">
-                  💡 <strong>Viva Concept Note:</strong> In React, a controlled component is one where form data is handled by a React component via <code>useState</code>. Every keystroke triggers an <code>onChange</code> event, updating state, which triggers a re-render showing the live message preview and character count.
+                  💡 <strong>Full-Stack Concept Note:</strong> In this practical, the React frontend and Express backend communicate over HTTP using <code>fetch()</code>. The data from the controlled inputs (<code>senderName</code> and <code>message</code>) is transmitted as JSON to <code>POST /tasks</code>, where Mongoose validates and persists it as a new document into MongoDB.
                 </div>
               )}
             </div>

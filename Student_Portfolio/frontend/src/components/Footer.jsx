@@ -42,6 +42,11 @@ function Footer({ author, github, linkedin, courseInfo, email }) {
             </div>
           </div>
         </div>
+
+        <div className="footer-bottom">
+          <p className="footer-copyright">© {currentYear} {author}. All rights reserved.</p>
+          <span className="footer-badge">{courseInfo?.code || 'ITUE301'} AWD • CHARUSAT University</span>
+        </div>
       </div>
     </footer>
   );

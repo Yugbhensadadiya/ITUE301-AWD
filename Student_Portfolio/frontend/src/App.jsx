@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import Home from './pages/Home';
 import Projects from './pages/Projects';
 import Contact from './pages/Contact';
+import TaskManager from './pages/TaskManager';
 import NotFound from './pages/NotFound';
 
 /**
@@ -161,13 +162,16 @@ function App() {
             }
           />
 
-          {/* Route 2: Projects Page */}
+          {/* Route 2: Practical 6 Full Stack Task Manager */}
+          <Route path="/tasks" element={<TaskManager />} />
+
+          {/* Route 3: Projects Page */}
           <Route
             path="/projects"
             element={<Projects projectList={projectList} />}
           />
 
-          {/* Route 3: Contact Page with controlled input & UI visibility toggling */}
+          {/* Route 4: Contact Page with controlled input & UI visibility toggling */}
           <Route
             path="/contact"
             element={<Contact studentProfile={studentProfile} />}

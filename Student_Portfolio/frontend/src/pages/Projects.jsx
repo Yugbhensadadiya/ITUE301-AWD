@@ -2,19 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Spinner from '../components/Spinner';
 import ErrorMessage from '../components/ErrorMessage';
+import TaskManager from './TaskManager';
 
 /**
- * Practical 3: API Integration and Data Rendering in React
+ * Projects Page: Full Stack Integration (Practical 6) & GitHub Repos (Practical 3)
  *
- * Concepts Demonstrated:
- * 1. useEffect: Triggers the side-effect (API call) when the component mounts.
- * 2. API Fetching: Uses standard Fetch API to retrieve GitHub repositories.
- * 3. Loading State: Displays a Spinner while the network request is pending.
- * 4. Error State: Catches network / HTTP errors and shows ErrorMessage with Retry.
- * 5. Success State: Renders dynamic repo cards (Name, URL, Star Count).
- * 6. Search Filter: Controlled input filtering repos array in real time.
+ * Defaults to Practical 6 Full Stack MongoDB Task Manager as required by syllabus:
+ * "Replace the GitHub repo data from Practical 3 with task data from your own backend."
  */
 function Projects({ projectList }) {
+  // Tab State: 'tasks' (Practical 6 MongoDB Integration) vs 'repos' (Practical 3 GitHub API)
+  const [activeTab, setActiveTab] = useState('tasks');
+
   // Required State 1: Repositories fetched from GitHub REST API
   const [repos, setRepos] = useState([]);
 
@@ -128,22 +127,46 @@ function Projects({ projectList }) {
 
   return (
     <div className="page-container projects-page">
-      <section className="portfolio-section">
-        {/* Section Header */}
-        <div className="section-header">
-          <span className="section-subtitle">Practical 3 • REST API Integration</span>
-          <h2 className="section-title">GitHub Live Repositories</h2>
-          <div className="section-divider"></div>
-          <p className="section-lead">
-            Demonstrating asynchronous data fetching with <code>useEffect</code>, <code>fetch()</code>,
-            and state-driven conditional rendering (Loading, Success, Error).
-          </p>
-        </div>
+      {/* Practical Switcher Navigation Banner */}
+      <div className="practical-tab-switcher">
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'tasks' ? 'tab-btn-active' : ''}`}
+          onClick={() => setActiveTab('tasks')}
+        >
+          <span className="tab-pill-badge">Practical 6</span>
+          <span className="tab-btn-title">Full Stack Task Manager (MongoDB Backend)</span>
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'repos' ? 'tab-btn-active' : ''}`}
+          onClick={() => setActiveTab('repos')}
+        >
+          <span className="tab-pill-badge tab-pill-muted">Practical 3</span>
+          <span className="tab-btn-title">GitHub Live Repositories (REST API Fetch)</span>
+        </button>
+      </div>
 
-        {/* ================================================================
-            Live GitHub Repositories Section (API Showcase)
-            ================================================================ */}
-        <div className="api-showcase-container">
+      {/* Conditionally Render Practical 6 (Default) or Practical 3 */}
+      {activeTab === 'tasks' ? (
+        <TaskManager />
+      ) : (
+        <section className="portfolio-section">
+          {/* Section Header */}
+          <div className="section-header">
+            <span className="section-subtitle">Practical 3 • REST API Integration</span>
+            <h2 className="section-title">GitHub Live Repositories</h2>
+            <div className="section-divider"></div>
+            <p className="section-lead">
+              Demonstrating asynchronous data fetching with <code>useEffect</code>, <code>fetch()</code>,
+              and state-driven conditional rendering (Loading, Success, Error).
+            </p>
+          </div>
+
+          {/* ================================================================
+              Live GitHub Repositories Section (API Showcase)
+              ================================================================ */}
+          <div className="api-showcase-container">
           {/* Search Input Bar (Placed above repository list) */}
           <div className="repo-search-bar">
             <div className="search-input-wrapper">
@@ -219,7 +242,7 @@ function Projects({ projectList }) {
                         {/* Primary Language */}
                         {repo.language && (
                           <span className="repo-lang-tag">
-                            <span className="lang-dot"></span>
+                            <span className={`lang-dot lang-${repo.language.toLowerCase().replace(/[^a-z0-9]/g, '')}`}></span>
                             {repo.language}
                           </span>
                         )}
@@ -311,6 +334,7 @@ function Projects({ projectList }) {
           </Link>
         </div>
       </section>
+      )}
     </div>
   );
 }

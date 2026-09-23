@@ -24,6 +24,12 @@ function NavBar({ isDarkMode, setIsDarkMode }) {
             Home
           </NavLink>
           <NavLink
+            to="/tasks"
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+          >
+            Tasks (P6)
+          </NavLink>
+          <NavLink
             to="/projects"
             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
           >

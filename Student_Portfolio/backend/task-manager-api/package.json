@@ -1,10 +1,11 @@
 {
   "name": "task-manager-api",
   "version": "1.0.0",
-  "description": "Practical 4: Building a RESTful API with Node.js and Express",
+  "description": "Practical 5: MongoDB Integration and Schema Design with Mongoose",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "dev": "node --watch server.js",
     "test": "node test-api.js"
   },
   "keywords": [
@@ -16,6 +17,9 @@
   "author": "Yug Bhensadadiya",
   "license": "ISC",
   "dependencies": {
-    "express": "^5.2.1"
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.10.1"
   }
 }
