@@ -82,9 +82,9 @@ function Contact({ studentProfile }) {
         throw new Error(data.error || `Server responded with HTTP status ${response.status}`);
       }
 
-      // Step 4: Handle Successful MongoDB Persistence
+      // Step 4: Handle Successful Persistence
       setStatusMessage({
-        text: `Task saved successfully to MongoDB! (ID: ${data.task?._id || 'Saved'})`,
+        text: 'Message sent successfully! Thank you for reaching out.',
         type: 'success'
       });
 
@@ -119,21 +119,21 @@ function Contact({ studentProfile }) {
       <section className="portfolio-section">
         {/* Section Header */}
         <div className="section-header">
-          <span className="section-subtitle">Practical 2 &amp; Practical 5 Integration</span>
-          <h2 className="section-title">Contact &amp; MongoDB Storage</h2>
+          <span className="section-subtitle">Get In Touch</span>
+          <h2 className="section-title">Contact &amp; Connect</h2>
           <div className="section-divider"></div>
           <p className="section-lead">
-            Demonstrating React controlled inputs, character counting, and full-stack integration with Express &amp; MongoDB.
+            Have a question, opportunity, or project idea? Feel free to reach out using the form below.
           </p>
         </div>
 
         <div className="contact-container">
-          {/* Card 1: Controlled Input Form & MongoDB Save */}
+          {/* Card 1: Controlled Input Form */}
           <div className="contact-card">
-            <span className="viva-badge">Practical 5 • MongoDB Connected</span>
+            <span className="viva-badge">Direct Message</span>
             <h3 className="card-heading">Send a Direct Message</h3>
             <p className="card-subtext">
-              Type a name and message below. Save it directly to the <code>taskmanager</code> MongoDB database.
+              Type your name and message below to get in touch.
             </p>
 
             {/* Status Alert Notification (Success / Error) */}
@@ -214,12 +214,12 @@ function Contact({ studentProfile }) {
                   {isSubmitting ? (
                     <>
                       <span className="btn-spinner"></span>
-                      <span>Saving to MongoDB...</span>
+                      <span>Sending Message...</span>
                     </>
                   ) : (
                     <>
-                      <span>🍃</span>
-                      <span>Save to MongoDB</span>
+                      <span>✉️</span>
+                      <span>Send Message</span>
                     </>
                   )}
                 </button>
@@ -349,12 +349,12 @@ function Contact({ studentProfile }) {
                   gap: '6px',
                 }}
               >
-                <span>{showHelp ? '▾ Close Help Hint' : '▸ Need Help / Viva Note?'}</span>
+                <span>{showHelp ? '▾ Close Note' : '▸ Information Note'}</span>
               </button>
 
               {showHelp && (
                 <div className="help-box">
-                  💡 <strong>Full-Stack Concept Note:</strong> In this practical, the React frontend and Express backend communicate over HTTP using <code>fetch()</code>. The data from the controlled inputs (<code>senderName</code> and <code>message</code>) is transmitted as JSON to <code>POST /tasks</code>, where Mongoose validates and persists it as a new document into MongoDB.
+                  💡 <strong>Note:</strong> Messages sent through this form are transmitted to the Express REST API and persisted directly into the MongoDB database.
                 </div>
               )}
             </div>

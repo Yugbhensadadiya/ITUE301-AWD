@@ -11,8 +11,8 @@ import TaskManager from './TaskManager';
  * "Replace the GitHub repo data from Practical 3 with task data from your own backend."
  */
 function Projects({ projectList }) {
-  // Tab State: 'tasks' (Practical 6 MongoDB Integration) vs 'repos' (Practical 3 GitHub API)
-  const [activeTab, setActiveTab] = useState('tasks');
+  // Tab State: 'repos' (Live GitHub API) vs 'tasks' (Task Management Workspace)
+  const [activeTab, setActiveTab] = useState('repos');
 
   // Required State 1: Repositories fetched from GitHub REST API
   const [repos, setRepos] = useState([]);
@@ -34,6 +34,7 @@ function Projects({ projectList }) {
       html_url: 'https://github.com/Yugbhensadadiya/civic-backend',
       description: 'Backend REST API services for Civic Complaint System built with Python, FastAPI, and PostgreSQL.',
       stargazers_count: 0,
+      forks_count: 0,
       language: 'Python',
     },
     {
@@ -42,6 +43,7 @@ function Projects({ projectList }) {
       html_url: 'https://github.com/Yugbhensadadiya/civic-frontend',
       description: 'Full Stack Citizen & Admin portal built with Next.js, React, and TailwindCSS.',
       stargazers_count: 0,
+      forks_count: 0,
       language: 'TypeScript',
     },
     {
@@ -50,6 +52,7 @@ function Projects({ projectList }) {
       html_url: 'https://github.com/Yugbhensadadiya/ITUE301-AWD',
       description: 'Advanced Web Development course practicals, React portfolio, and Express backend projects.',
       stargazers_count: 1,
+      forks_count: 0,
       language: 'JavaScript',
     },
     {
@@ -58,6 +61,7 @@ function Projects({ projectList }) {
       html_url: 'https://github.com/Yugbhensadadiya',
       description: 'Data analytics engine with FastAPI and Pandas built during 9SERIES internship.',
       stargazers_count: 0,
+      forks_count: 0,
       language: 'Python',
     },
   ];
@@ -127,34 +131,34 @@ function Projects({ projectList }) {
 
   return (
     <div className="page-container projects-page">
-      {/* Practical Switcher Navigation Banner */}
+      {/* View Switcher Navigation Banner */}
       <div className="practical-tab-switcher">
-        <button
-          type="button"
-          className={`tab-btn ${activeTab === 'tasks' ? 'tab-btn-active' : ''}`}
-          onClick={() => setActiveTab('tasks')}
-        >
-          <span className="tab-pill-badge">Practical 6</span>
-          <span className="tab-btn-title">Full Stack Task Manager (MongoDB Backend)</span>
-        </button>
         <button
           type="button"
           className={`tab-btn ${activeTab === 'repos' ? 'tab-btn-active' : ''}`}
           onClick={() => setActiveTab('repos')}
         >
-          <span className="tab-pill-badge tab-pill-muted">Practical 3</span>
-          <span className="tab-btn-title">GitHub Live Repositories (REST API Fetch)</span>
+          <span className={`tab-pill-badge ${activeTab === 'repos' ? '' : 'tab-pill-muted'}`}>GitHub</span>
+          <span className="tab-btn-title">Live GitHub Repositories</span>
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'tasks' ? 'tab-btn-active' : ''}`}
+          onClick={() => setActiveTab('tasks')}
+        >
+          <span className={`tab-pill-badge ${activeTab === 'tasks' ? '' : 'tab-pill-muted'}`}>Tasks</span>
+          <span className="tab-btn-title">Task Management Workspace</span>
         </button>
       </div>
 
-      {/* Conditionally Render Practical 6 (Default) or Practical 3 */}
+      {/* Conditionally Render GitHub Repos (Default) or Tasks Workspace */}
       {activeTab === 'tasks' ? (
         <TaskManager />
       ) : (
         <section className="portfolio-section">
           {/* Section Header */}
           <div className="section-header">
-            <span className="section-subtitle">Practical 3 • REST API Integration</span>
+            <span className="section-subtitle">Open Source &amp; Live Repositories</span>
             <h2 className="section-title">GitHub Live Repositories</h2>
             <div className="section-divider"></div>
             <p className="section-lead">
@@ -215,7 +219,19 @@ function Projects({ projectList }) {
           {/* 3. Success State: Render dynamic repository cards */}
           {!loading && !error && (
             <>
-              {filteredRepos.length > 0 ? (
+              {repos.length === 0 ? (
+                <div className="no-results-box">
+                  <p>📁 No public repositories found for this account.</p>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={loadFallback}
+                    style={{ marginTop: '12px' }}
+                  >
+                    Load Fallback Repositories
+                  </button>
+                </div>
+              ) : filteredRepos.length > 0 ? (
                 <div className="repos-grid">
                   {filteredRepos.map((repo) => (
                     <div key={repo.id} className="repo-card">
@@ -226,10 +242,16 @@ function Projects({ projectList }) {
                           {repo.name}
                         </h3>
 
-                        {/* Repository Star Count */}
-                        <div className="repo-stars" title={`${repo.stargazers_count} stars on GitHub`}>
-                          <span className="star-icon">⭐</span>
-                          <span className="star-count">{repo.stargazers_count}</span>
+                        {/* Repository Stars & Forks Badges */}
+                        <div className="repo-stats-group">
+                          <div className="repo-stars" title={`${repo.stargazers_count ?? 0} stars on GitHub`}>
+                            <span className="star-icon">⭐</span>
+                            <span className="star-count">{repo.stargazers_count ?? 0}</span>
+                          </div>
+                          <div className="repo-forks" title={`${repo.forks_count ?? 0} forks on GitHub`}>
+                            <span className="fork-icon">🍴</span>
+                            <span className="fork-count">{repo.forks_count ?? 0}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -287,7 +309,7 @@ function Projects({ projectList }) {
               <h2 className="section-title">Featured Portfolio Projects</h2>
               <div className="section-divider"></div>
               <p className="section-lead">
-                Curated full-stack web platforms and backend architecture projects from Practical 1.
+                Curated full-stack web platforms and backend architecture projects.
               </p>
             </div>
 

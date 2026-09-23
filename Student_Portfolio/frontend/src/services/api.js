@@ -1,14 +1,19 @@
 /**
- * Practical 6: Centralized API Service for React Frontend
+ * Practical 6 & 7: Centralized API Service for React Frontend
  * 
  * Objective:
  * Centralize all HTTP communication with the Express + MongoDB backend.
- * Provides reusable functions for CRUD operations:
- *   - getTasks():    GET /tasks
- *   - getTaskById(): GET /tasks/:id
- *   - createTask():  POST /tasks
- *   - updateTask():  PUT /tasks/:id
- *   - deleteTask():  DELETE /tasks/:id
+ * Provides reusable functions for:
+ *   - Authentication (Practical 7):
+ *       - registerUser(): POST /register
+ *       - loginUser():    POST /login
+ *       - getCurrentUser(): GET /me
+ *   - CRUD Operations (Practical 6, protected by Practical 7 JWT):
+ *       - getTasks():    GET /tasks
+ *       - getTaskById(): GET /tasks/:id
+ *       - createTask():  POST /tasks
+ *       - updateTask():  PUT /tasks/:id
+ *       - deleteTask():  DELETE /tasks/:id
  * 
  * Base URL: http://localhost:5000
  */
@@ -17,8 +22,17 @@
 export const BASE_URL = 'http://localhost:5000';
 
 /**
+ * Retrieve authorization headers with JWT Bearer token from localStorage.
+ */
+export function getAuthHeaders() {
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+/**
  * Helper to handle HTTP responses uniformly.
  * Throws a descriptive error if response is not ok (4xx or 5xx status).
+ * Automatically cleans up session if 401 Unauthorized is returned.
  */
 async function handleResponse(response) {
   let data;
@@ -29,6 +43,16 @@ async function handleResponse(response) {
   }
 
   if (!response.ok) {
+    // If token expired or invalid, clear local storage
+    if (response.status === 401) {
+      const hadToken = Boolean(localStorage.getItem('token'));
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (hadToken && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
+
     const errorMessage =
       (data && data.error) ||
       (data && data.message) ||
@@ -51,9 +75,80 @@ function handleNetworkError(error) {
   throw error;
 }
 
+// ============================================================================
+// Authentication API Functions (Practical 7)
+// ============================================================================
+
+/**
+ * REGISTER: POST /register
+ * Registers a new user account with hashed password in MongoDB.
+ * @param {Object} userData - { name, email, password }
+ * @returns {Promise<Object>} Backend response with created user details
+ */
+export async function registerUser(userData) {
+  try {
+    const response = await fetch(`${BASE_URL}/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    return handleNetworkError(error);
+  }
+}
+
+/**
+ * LOGIN: POST /login
+ * Authenticates user credentials and retrieves JWT token.
+ * @param {Object} credentials - { email, password }
+ * @returns {Promise<Object>} Backend response with { token, user }
+ */
+export async function loginUser(credentials) {
+  try {
+    const response = await fetch(`${BASE_URL}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(credentials),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    return handleNetworkError(error);
+  }
+}
+
+/**
+ * GET CURRENT USER PROFILE: GET /me
+ * @returns {Promise<Object>} Profile details of authenticated user
+ */
+export async function getCurrentUser() {
+  try {
+    const response = await fetch(`${BASE_URL}/me`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        ...getAuthHeaders(),
+      },
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    return handleNetworkError(error);
+  }
+}
+
+// ============================================================================
+// Task CRUD API Functions (Practical 6 - Protected with JWT)
+// ============================================================================
+
 /**
  * 1. READ ALL TASKS: GET /tasks
- * Retrieves the full list of task documents stored in MongoDB.
+ * Retrieves the full list of task documents stored in MongoDB for authenticated user.
  * @returns {Promise<Array>} Array of task objects
  */
 export async function getTasks() {
@@ -62,6 +157,7 @@ export async function getTasks() {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
+        ...getAuthHeaders(),
       },
     });
     return await handleResponse(response);
@@ -82,6 +178,7 @@ export async function getTaskById(id) {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
+        ...getAuthHeaders(),
       },
     });
     return await handleResponse(response);
@@ -103,6 +200,7 @@ export async function createTask(taskData) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        ...getAuthHeaders(),
       },
       body: JSON.stringify(taskData),
     });
@@ -126,6 +224,7 @@ export async function updateTask(id, updateData) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        ...getAuthHeaders(),
       },
       body: JSON.stringify(updateData),
     });
@@ -147,6 +246,7 @@ export async function deleteTask(id) {
       method: 'DELETE',
       headers: {
         'Accept': 'application/json',
+        ...getAuthHeaders(),
       },
     });
     return await handleResponse(response);

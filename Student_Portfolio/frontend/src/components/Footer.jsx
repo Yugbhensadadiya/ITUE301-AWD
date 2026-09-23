@@ -10,8 +10,7 @@ function Footer({ author, github, linkedin, courseInfo, email }) {
           <div className="footer-col brand-col">
             <h3 className="footer-brand">{author}</h3>
             <p className="footer-bio">
-              Student Portfolio created for {courseInfo.code}: {courseInfo.title}.
-              Demonstrating Vite + React functional components and prop-driven architecture.
+              Personal portfolio showcasing full-stack web platforms, backend architecture, and interactive user interfaces.
             </p>
           </div>
 

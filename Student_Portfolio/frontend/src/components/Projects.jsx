@@ -5,7 +5,7 @@ function Projects({ projectList }) {
   return (
     <section id="projects" className="portfolio-section">
       <div className="section-header">
-        <span className="section-subtitle">Practical Showcase</span>
+        <span className="section-subtitle">Project Showcase</span>
         <h2 className="section-title">Featured Projects</h2>
         <div className="section-divider"></div>
         <p className="section-lead">

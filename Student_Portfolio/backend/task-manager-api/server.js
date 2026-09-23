@@ -22,13 +22,20 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
-// Import the Task Mongoose Model
+// Import Mongoose Models
 const Task = require('./models/Task');
+const User = require('./models/User');
+
+// Import Auth Middleware
+const auth = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/taskmanager';
+const JWT_SECRET = process.env.JWT_SECRET || 'jwt_secret_key_practical_7_supersecret';
 
 // ============================================================================
 // 1. CORS Configuration (React Frontend Integration - Practical 6)
@@ -150,18 +157,149 @@ const validateTaskId = (req, res, next) => {
 };
 
 // ============================================================================
-// 7. CRUD Route Handlers with Mongoose Operations
+// 7. Practical 7: Authentication Route Handlers (JWT + bcryptjs)
+// ============================================================================
+
+/**
+ * USER REGISTRATION: POST /register
+ * - Validates input fields (name, email, password >= 6 chars).
+ * - Checks for duplicate email in MongoDB users collection.
+ * - Hashes password securely using bcryptjs (salt rounds = 10).
+ * - Stores new User document in MongoDB (plain-text password never stored).
+ * - Status: 201 Created
+ */
+app.post('/register', async (req, res, next) => {
+  try {
+    const { name, email, password } = req.body || {};
+
+    // 1. Validation checks
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    if (!email || typeof email !== 'string' || email.trim() === '') {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    if (!password || typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // 2. Check if user already exists
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ error: 'User with this email already exists' });
+    }
+
+    // 3. Hash password with bcryptjs
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // 4. Create and persist user in MongoDB
+    const newUser = await User.create({
+      name: name.trim(),
+      email: normalizedEmail,
+      password: hashedPassword
+    });
+
+    res.status(201).json({
+      message: 'User registered successfully',
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * USER LOGIN: POST /login
+ * - Verifies user existence by email.
+ * - Compares plain text password against stored bcrypt hash using bcrypt.compare().
+ * - Signs a JSON Web Token (JWT) with user ID, name, and email payload.
+ * - Status: 200 OK with JWT token & user profile
+ */
+app.post('/login', async (req, res, next) => {
+  try {
+    const { email, password } = req.body || {};
+
+    // 1. Validation checks
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // 2. Find user in MongoDB
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // 3. Verify password hash
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // 4. Generate signed JWT token
+    const token = jwt.sign(
+      {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(200).json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * CURRENT USER PROFILE: GET /me
+ * Protected endpoint returning profile of currently logged-in user.
+ */
+app.get('/me', auth, async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.status(200).json({ user });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// 8. CRUD Route Handlers with Mongoose Operations (Protected by auth)
 // ============================================================================
 
 /**
  * READ ALL: GET /tasks
+ * Protected by JWT auth middleware
  * Mongoose Method: Task.find()
  * Retrieves all task documents from the MongoDB 'tasks' collection.
  * Status: 200 OK
  */
-app.get('/tasks', async (req, res, next) => {
+app.get('/tasks', auth, async (req, res, next) => {
   try {
-    const tasks = await Task.find();
+    const tasks = await Task.find().sort({ createdAt: -1 });
     res.status(200).json(tasks);
   } catch (err) {
     next(err);
@@ -170,11 +308,12 @@ app.get('/tasks', async (req, res, next) => {
 
 /**
  * READ ONE BY ID: GET /tasks/:id (Supplementary Requirement C)
+ * Protected by JWT auth middleware
  * Mongoose Method: Task.findById()
  * Retrieves a single task document by its MongoDB ObjectId.
  * Status: 200 OK (or 404 Not Found if no document matches)
  */
-app.get('/tasks/:id', validateTaskId, async (req, res, next) => {
+app.get('/tasks/:id', auth, validateTaskId, async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id);
 
@@ -195,11 +334,12 @@ app.get('/tasks/:id', validateTaskId, async (req, res, next) => {
 
 /**
  * CREATE: POST /tasks
+ * Protected by JWT auth middleware
  * Mongoose Method: Task.create()
  * Creates a new task document in MongoDB with schema validation.
  * Status: 201 Created
  */
-app.post('/tasks', async (req, res, next) => {
+app.post('/tasks', auth, async (req, res, next) => {
   try {
     const { title, description, completed, priority } = req.body || {};
 
@@ -230,13 +370,12 @@ app.post('/tasks', async (req, res, next) => {
 
 /**
  * UPDATE: PUT /tasks/:id
+ * Protected by JWT auth middleware
  * Mongoose Method: Task.findByIdAndUpdate()
  * Updates an existing task document in MongoDB by ID.
- * runValidators: true ensures schema constraints (like enum) are enforced on updates.
- * returnDocument: 'after' returns the updated document.
  * Status: 200 OK (or 404 Not Found if task does not exist)
  */
-app.put('/tasks/:id', validateTaskId, async (req, res, next) => {
+app.put('/tasks/:id', auth, validateTaskId, async (req, res, next) => {
   try {
     const { title, description, completed, priority } = req.body || {};
 
@@ -276,11 +415,12 @@ app.put('/tasks/:id', validateTaskId, async (req, res, next) => {
 
 /**
  * DELETE: DELETE /tasks/:id
+ * Protected by JWT auth middleware
  * Mongoose Method: Task.findByIdAndDelete()
  * Permanently removes a task document from the MongoDB collection by its ID.
  * Status: 200 OK (or 404 Not Found if task does not exist)
  */
-app.delete('/tasks/:id', validateTaskId, async (req, res, next) => {
+app.delete('/tasks/:id', auth, validateTaskId, async (req, res, next) => {
   try {
     const deletedTask = await Task.findByIdAndDelete(req.params.id);
 

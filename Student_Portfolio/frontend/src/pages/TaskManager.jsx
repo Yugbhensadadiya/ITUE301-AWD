@@ -138,7 +138,7 @@ function TaskManager() {
       setNewDescription('');
       setNewPriority('medium');
 
-      showToast(`Task "${createdTask.title}" created & saved to MongoDB!`, 'success');
+      showToast(`Task "${createdTask.title}" created successfully!`, 'success');
     } catch (err) {
       console.error('Failed to create task:', err);
       showToast(err.message || 'Error creating task.', 'error');
@@ -221,7 +221,7 @@ function TaskManager() {
       );
 
       setEditingTaskId(null);
-      showToast('Task updated successfully in MongoDB!', 'success');
+      showToast('Task updated successfully!', 'success');
     } catch (err) {
       console.error('Failed to save task edits:', err);
       showToast(`Error updating task: ${err.message}`, 'error');
@@ -253,7 +253,7 @@ function TaskManager() {
       // Remove from local state upon confirmed backend deletion
       setTasks((prev) => prev.filter((t) => t._id !== id));
 
-      showToast(`Task "${title}" deleted from MongoDB.`, 'info');
+      showToast(`Task "${title}" deleted.`, 'info');
       setTaskToDelete(null);
     } catch (err) {
       console.error('Failed to delete task:', err);
@@ -314,36 +314,13 @@ function TaskManager() {
       <section className="portfolio-section taskmanager-hero">
         <div className="section-header">
           <span className="section-subtitle">
-            Practical 6 • Full Stack Integration
+            Full Stack Task Management
           </span>
           <h1 className="section-title">Task Management System</h1>
           <div className="section-divider"></div>
           <p className="section-lead">
-            Full-stack CRUD application connecting a <strong>React 18</strong> frontend
-            to an <strong>Express.js</strong> REST API and a persistent <strong>MongoDB</strong> database.
+            Manage your tasks, track progress, and organize your daily workflow efficiently.
           </p>
-        </div>
-
-        {/* Backend Connection Status Card */}
-        <div className="backend-status-card">
-          <div className="status-indicator">
-            <span className="status-ping"></span>
-            <span className="status-label">Backend API:</span>
-            <code className="status-endpoint">{BASE_URL}</code>
-          </div>
-          <div className="database-indicator">
-            <span className="db-icon">🗄️</span>
-            <span>Database: <strong>MongoDB (taskmanager.tasks)</strong></span>
-          </div>
-          <button
-            type="button"
-            className="action-btn-refresh"
-            onClick={loadTasks}
-            disabled={isLoading}
-            title="Re-fetch tasks from MongoDB"
-          >
-            {isLoading ? 'Refreshing...' : '🔄 Re-fetch Data'}
-          </button>
         </div>
       </section>
 
@@ -355,10 +332,9 @@ function TaskManager() {
         <aside className="taskmanager-sidebar">
           <div className="crud-card form-card">
             <div className="card-header-styled">
-              <span className="card-tag">POST /tasks</span>
               <h2 className="card-title">Create New Task</h2>
               <p className="card-desc">
-                Fill details to persist a new document in MongoDB.
+                Enter details below to add a new task to your list.
               </p>
             </div>
 
@@ -428,7 +404,7 @@ function TaskManager() {
                 {isCreating ? (
                   <>
                     <span className="btn-spinner"></span>
-                    <span>Saving to MongoDB...</span>
+                    <span>Saving Task...</span>
                   </>
                 ) : (
                   <>
@@ -437,13 +413,6 @@ function TaskManager() {
                 )}
               </button>
             </form>
-
-            {/* Quick Helper Note */}
-            <div className="academic-note">
-              <small>
-                💡 <strong>Lab Insight:</strong> Upon submission, React sends a <code>POST</code> request with <code>Content-Type: application/json</code>. The Mongoose pre-save hook trims the title before storing it in MongoDB.
-              </small>
-            </div>
           </div>
         </aside>
 
@@ -517,7 +486,7 @@ function TaskManager() {
           {isLoading && (
             <div className="task-loading-state">
               <Spinner />
-              <p className="loading-caption">Fetching tasks from MongoDB via Express...</p>
+              <p className="loading-caption">Loading tasks...</p>
             </div>
           )}
 
@@ -526,7 +495,7 @@ function TaskManager() {
             <ErrorMessage
               message={fetchError}
               onRetry={loadTasks}
-              helpText="Ensure your Express server is running on http://localhost:5000 and MongoDB is active."
+              helpText="Unable to load tasks. Please check your connection and try again."
             />
           )}
 
@@ -538,7 +507,7 @@ function TaskManager() {
               <p>
                 {searchTerm || statusFilter !== 'all'
                   ? 'No tasks match your current filter or search criteria.'
-                  : 'Your MongoDB collection is empty. Use the form to create your first task!'}
+                  : 'No tasks yet. Use the form to create your first task!'}
               </p>
               {(searchTerm || statusFilter !== 'all') && (
                 <button
@@ -661,9 +630,6 @@ function TaskManager() {
                             <span className="meta-time">
                               🕒 {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : 'Recent'}
                             </span>
-                            <span className="meta-id" title={`MongoDB ObjectId: ${task._id}`}>
-                              ID: {task._id.substring(task._id.length - 6)}
-                            </span>
                           </div>
 
                           <div className="task-actions">
@@ -681,7 +647,7 @@ function TaskManager() {
                               className="btn-action-delete"
                               onClick={() => requestDelete(task)}
                               disabled={isUpdating || isDeleting}
-                              title="Delete Task from MongoDB"
+                              title="Delete Task"
                             >
                               🗑️ Delete
                             </button>
@@ -716,10 +682,10 @@ function TaskManager() {
             </div>
 
             <p className="modal-body">
-              Are you sure you want to permanently delete task{' '}
+              Are you sure you want to delete task{' '}
               <strong>"{taskToDelete.title}"</strong>?
               <br />
-              This action executes <code>DELETE /tasks/{taskToDelete._id}</code> and cannot be undone.
+              This action cannot be undone.
             </p>
 
             <div className="modal-actions">
@@ -737,7 +703,7 @@ function TaskManager() {
                 onClick={confirmDelete}
                 disabled={Boolean(deletingId)}
               >
-                {deletingId ? 'Deleting from MongoDB...' : 'Confirm Delete'}
+                {deletingId ? 'Deleting...' : 'Confirm Delete'}
               </button>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import './App.css';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
@@ -7,6 +7,9 @@ import Home from './pages/Home';
 import Projects from './pages/Projects';
 import Contact from './pages/Contact';
 import TaskManager from './pages/TaskManager';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import ProtectedRoute from './components/ProtectedRoute';
 import NotFound from './pages/NotFound';
 
 /**
@@ -22,6 +25,29 @@ import NotFound from './pages/NotFound';
 function App() {
   // Theme state: useState hook for toggling between Dark and Light mode
   const [isDarkMode, setIsDarkMode] = useState(true);
+
+  // Practical 7: Authentication state initialized from localStorage
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const navigate = useNavigate();
+
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setCurrentUser(null);
+    navigate('/login');
+  };
 
   // Student Portfolio Data (Sourced directly from Yug Bhensadadiya's Resume)
   const studentProfile = {
@@ -136,48 +162,79 @@ function App() {
   const courseInfo = {
     code: 'ITUE301',
     title: 'Advanced Web Development',
-    practical: 'Practical 2: React Router & useState State Management',
   };
 
   const themeColor = '#06b6d4';
 
   return (
     <div className={`portfolio-app ${isDarkMode ? 'dark-theme' : 'light-theme'}`}>
-      {/* 1. Reusable NavBar Component with Navigation Links and Theme Toggle */}
-      <NavBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+      {/* 1. Reusable NavBar Component with Navigation Links, Theme Toggle & Logout */}
+      <NavBar
+        isDarkMode={isDarkMode}
+        setIsDarkMode={setIsDarkMode}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+      />
 
       {/* 2. Main Content routed dynamically via React Router (No full-page reload) */}
       <main className="main-container">
         <Routes>
-          {/* Route 1: Home Page */}
+          {/* Public Auth Routes (Practical 7) */}
+          <Route
+            path="/login"
+            element={<Login onLoginSuccess={handleLoginSuccess} />}
+          />
+          <Route
+            path="/signup"
+            element={<Signup />}
+          />
+
+          {/* Protected Routes (Practical 7: Blocked for unauthenticated visitors) */}
           <Route
             path="/"
             element={
-              <Home
-                studentProfile={studentProfile}
-                skillList={skillList}
-                categorizedSkills={categorizedSkills}
-                themeColor={themeColor}
-              />
+              <ProtectedRoute>
+                <Home
+                  studentProfile={studentProfile}
+                  skillList={skillList}
+                  categorizedSkills={categorizedSkills}
+                  themeColor={themeColor}
+                />
+              </ProtectedRoute>
             }
           />
 
-          {/* Route 2: Practical 6 Full Stack Task Manager */}
-          <Route path="/tasks" element={<TaskManager />} />
+          {/* Protected Practical 6 Full Stack Task Manager */}
+          <Route
+            path="/tasks"
+            element={
+              <ProtectedRoute>
+                <TaskManager />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Route 3: Projects Page */}
+          {/* Protected Projects Page */}
           <Route
             path="/projects"
-            element={<Projects projectList={projectList} />}
+            element={
+              <ProtectedRoute>
+                <Projects projectList={projectList} />
+              </ProtectedRoute>
+            }
           />
 
-          {/* Route 4: Contact Page with controlled input & UI visibility toggling */}
+          {/* Protected Contact Page */}
           <Route
             path="/contact"
-            element={<Contact studentProfile={studentProfile} />}
+            element={
+              <ProtectedRoute>
+                <Contact studentProfile={studentProfile} />
+              </ProtectedRoute>
+            }
           />
 
-          {/* Route 4: 404 Not Found Page */}
+          {/* 404 Not Found Page */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
