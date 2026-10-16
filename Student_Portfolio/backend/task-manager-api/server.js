@@ -32,6 +32,9 @@ const User = require('./models/User');
 // Import Auth Middleware
 const auth = require('./middleware/auth');
 
+// Import Shared In-Memory Cache and Counters (Practical 9)
+const { cache, stats } = require('./cache');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/taskmanager';
@@ -161,14 +164,14 @@ const validateTaskId = (req, res, next) => {
 // ============================================================================
 
 /**
- * USER REGISTRATION: POST /register
+ * USER REGISTRATION: POST /register & POST /auth/register
  * - Validates input fields (name, email, password >= 6 chars).
  * - Checks for duplicate email in MongoDB users collection.
  * - Hashes password securely using bcryptjs (salt rounds = 10).
  * - Stores new User document in MongoDB (plain-text password never stored).
  * - Status: 201 Created
  */
-app.post('/register', async (req, res, next) => {
+const registerHandler = async (req, res, next) => {
   try {
     const { name, email, password } = req.body || {};
 
@@ -213,16 +216,19 @@ app.post('/register', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+};
+
+app.post('/register', registerHandler);
+app.post('/auth/register', registerHandler);
 
 /**
- * USER LOGIN: POST /login
+ * USER LOGIN: POST /login & POST /auth/login
  * - Verifies user existence by email.
  * - Compares plain text password against stored bcrypt hash using bcrypt.compare().
  * - Signs a JSON Web Token (JWT) with user ID, name, and email payload.
  * - Status: 200 OK with JWT token & user profile
  */
-app.post('/login', async (req, res, next) => {
+const loginHandler = async (req, res, next) => {
   try {
     const { email, password } = req.body || {};
 
@@ -268,13 +274,16 @@ app.post('/login', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+};
+
+app.post('/login', loginHandler);
+app.post('/auth/login', loginHandler);
 
 /**
- * CURRENT USER PROFILE: GET /me
+ * CURRENT USER PROFILE: GET /me & GET /auth/me
  * Protected endpoint returning profile of currently logged-in user.
  */
-app.get('/me', auth, async (req, res, next) => {
+const meHandler = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
     if (!user) {
@@ -284,22 +293,58 @@ app.get('/me', auth, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+};
+
+app.get('/me', auth, meHandler);
+app.get('/auth/me', auth, meHandler);
 
 // ============================================================================
-// 8. CRUD Route Handlers with Mongoose Operations (Protected by auth)
+// 8. CRUD Route Handlers with In-Memory Caching (Practical 9)
 // ============================================================================
+
+/**
+ * DEBUG CACHE STATS: GET /cache-stats and GET /tasks/cache-stats (Practical 9 Supplementary)
+ * Returns current cache hits, misses, and active cached keys.
+ */
+const getCacheStatsHandler = (req, res) => {
+  res.status(200).json({
+    hits: stats.hits,
+    misses: stats.misses,
+    keys: cache.keys()
+  });
+};
+
+app.get('/cache-stats', getCacheStatsHandler);
+app.get('/tasks/cache-stats', getCacheStatsHandler);
 
 /**
  * READ ALL: GET /tasks
  * Protected by JWT auth middleware
- * Mongoose Method: Task.find()
- * Retrieves all task documents from the MongoDB 'tasks' collection.
+ * Practical 9: Caches task list using fixed cache key 'all_tasks'.
+ * Checks cache first; on hit returns cached data, on miss queries MongoDB and caches result.
+ * Supports ?cache=false to bypass cache for performance benchmarking.
  * Status: 200 OK
  */
 app.get('/tasks', auth, async (req, res, next) => {
   try {
+    const cacheKey = 'all_tasks';
+    const bypassCache = req.query.cache === 'false';
+
+    if (!bypassCache) {
+      const cachedTasks = cache.get(cacheKey);
+      if (cachedTasks !== undefined) {
+        stats.hits++;
+        return res.status(200).json(cachedTasks);
+      }
+      stats.misses++;
+    }
+
     const tasks = await Task.find().sort({ createdAt: -1 });
+
+    if (!bypassCache) {
+      cache.set(cacheKey, tasks);
+    }
+
     res.status(200).json(tasks);
   } catch (err) {
     next(err);
@@ -307,14 +352,27 @@ app.get('/tasks', auth, async (req, res, next) => {
 });
 
 /**
- * READ ONE BY ID: GET /tasks/:id (Supplementary Requirement C)
+ * READ ONE BY ID: GET /tasks/:id (Supplementary Requirement)
  * Protected by JWT auth middleware
- * Mongoose Method: Task.findById()
- * Retrieves a single task document by its MongoDB ObjectId.
+ * Practical 9: Caches individual task using task-specific key 'task_:id'.
+ * Checks cache first; on hit returns cached task, on miss queries MongoDB and caches result.
+ * Supports ?cache=false to bypass cache for performance benchmarking.
  * Status: 200 OK (or 404 Not Found if no document matches)
  */
 app.get('/tasks/:id', auth, validateTaskId, async (req, res, next) => {
   try {
+    const cacheKey = `task_${req.params.id}`;
+    const bypassCache = req.query.cache === 'false';
+
+    if (!bypassCache) {
+      const cachedTask = cache.get(cacheKey);
+      if (cachedTask !== undefined) {
+        stats.hits++;
+        return res.status(200).json(cachedTask);
+      }
+      stats.misses++;
+    }
+
     const task = await Task.findById(req.params.id);
 
     if (!task) {
@@ -323,10 +381,16 @@ app.get('/tasks/:id', auth, validateTaskId, async (req, res, next) => {
       });
     }
 
-    res.status(200).json({
+    const responseData = {
       message: 'Task retrieved successfully',
       task: task
-    });
+    };
+
+    if (!bypassCache) {
+      cache.set(cacheKey, responseData);
+    }
+
+    res.status(200).json(responseData);
   } catch (err) {
     next(err);
   }
@@ -335,8 +399,7 @@ app.get('/tasks/:id', auth, validateTaskId, async (req, res, next) => {
 /**
  * CREATE: POST /tasks
  * Protected by JWT auth middleware
- * Mongoose Method: Task.create()
- * Creates a new task document in MongoDB with schema validation.
+ * Practical 9: Invalidates 'all_tasks' cache after creating a new task to prevent stale data.
  * Status: 201 Created
  */
 app.post('/tasks', auth, async (req, res, next) => {
@@ -358,6 +421,9 @@ app.post('/tasks', auth, async (req, res, next) => {
       priority
     });
 
+    // Practical 9: Invalidate 'all_tasks' cache on new task creation
+    cache.del('all_tasks');
+
     res.status(201).json({
       message: 'Task created successfully',
       task: newTask
@@ -371,8 +437,7 @@ app.post('/tasks', auth, async (req, res, next) => {
 /**
  * UPDATE: PUT /tasks/:id
  * Protected by JWT auth middleware
- * Mongoose Method: Task.findByIdAndUpdate()
- * Updates an existing task document in MongoDB by ID.
+ * Practical 9: Invalidates both 'all_tasks' and 'task_:id' caches upon successful update.
  * Status: 200 OK (or 404 Not Found if task does not exist)
  */
 app.put('/tasks/:id', auth, validateTaskId, async (req, res, next) => {
@@ -404,6 +469,10 @@ app.put('/tasks/:id', auth, validateTaskId, async (req, res, next) => {
       });
     }
 
+    // Practical 9: Invalidate 'all_tasks' and specific task cache on update
+    cache.del('all_tasks');
+    cache.del(`task_${req.params.id}`);
+
     res.status(200).json({
       message: 'Task updated successfully',
       task: updatedTask
@@ -416,8 +485,7 @@ app.put('/tasks/:id', auth, validateTaskId, async (req, res, next) => {
 /**
  * DELETE: DELETE /tasks/:id
  * Protected by JWT auth middleware
- * Mongoose Method: Task.findByIdAndDelete()
- * Permanently removes a task document from the MongoDB collection by its ID.
+ * Practical 9: Invalidates both 'all_tasks' and 'task_:id' caches upon successful deletion.
  * Status: 200 OK (or 404 Not Found if task does not exist)
  */
 app.delete('/tasks/:id', auth, validateTaskId, async (req, res, next) => {
@@ -429,6 +497,10 @@ app.delete('/tasks/:id', auth, validateTaskId, async (req, res, next) => {
         error: 'Task not found'
       });
     }
+
+    // Practical 9: Invalidate 'all_tasks' and specific task cache on deletion
+    cache.del('all_tasks');
+    cache.del(`task_${req.params.id}`);
 
     res.status(200).json({
       message: 'Task deleted successfully',
@@ -491,15 +563,19 @@ app.use((err, req, res, next) => {
 // ============================================================================
 app.listen(PORT, () => {
   console.log(`=======================================================`);
-  console.log(` Practical 5: Task Management API Server (MongoDB/Mongoose)`);
+  console.log(` Practical 9: In-Memory Caching & Task API Server`);
   console.log(` Server is running on port ${PORT}`);
   console.log(` Base URL: http://localhost:${PORT}`);
   console.log(` Endpoints:`);
-  console.log(`   GET    /tasks`);
-  console.log(`   GET    /tasks/:id`);
-  console.log(`   POST   /tasks`);
-  console.log(`   PUT    /tasks/:id`);
-  console.log(`   DELETE /tasks/:id`);
+  console.log(`   POST   /login or /auth/login`);
+  console.log(`   POST   /register or /auth/register`);
+  console.log(`   GET    /me or /auth/me`);
+  console.log(`   GET    /tasks             (Cached - key: all_tasks)`);
+  console.log(`   GET    /tasks/:id         (Cached - key: task_:id)`);
+  console.log(`   GET    /cache-stats       (Debug endpoint - hits, misses, keys)`);
+  console.log(`   POST   /tasks             (Invalidates all_tasks)`);
+  console.log(`   PUT    /tasks/:id         (Invalidates all_tasks & task_:id)`);
+  console.log(`   DELETE /tasks/:id         (Invalidates all_tasks & task_:id)`);
   console.log(`=======================================================`);
 });
 

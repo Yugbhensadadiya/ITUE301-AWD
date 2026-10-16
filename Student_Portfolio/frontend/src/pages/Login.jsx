@@ -2,16 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { loginUser } from '../services/api';
 
-/**
- * Practical 7: Login Page Component
- * 
- * Features:
- * - Controlled inputs for Email and Password.
- * - Client-side validation.
- * - Authenticates against Express backend (POST /login).
- * - Stores JWT token and user profile in localStorage.
- * - Redirects to target protected page or Home on success.
- */
 function Login({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import './App.css';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
-import Projects from './pages/Projects';
-import Contact from './pages/Contact';
 import TaskManager from './pages/TaskManager';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
 import NotFound from './pages/NotFound';
+
+// Practical 8: Route-based Lazy Loading and Code Splitting
+const Projects = lazy(() => import('./pages/Projects'));
+const Contact = lazy(() => import('./pages/Contact'));
 
 /**
  * Practical 2: React Router & useState State Management
@@ -178,65 +180,67 @@ function App() {
 
       {/* 2. Main Content routed dynamically via React Router (No full-page reload) */}
       <main className="main-container">
-        <Routes>
-          {/* Public Auth Routes (Practical 7) */}
-          <Route
-            path="/login"
-            element={<Login onLoginSuccess={handleLoginSuccess} />}
-          />
-          <Route
-            path="/signup"
-            element={<Signup />}
-          />
+        <Suspense fallback={<div className="loading">Loading Page...</div>}>
+          <Routes>
+            {/* Public Auth Routes (Practical 7) */}
+            <Route
+              path="/login"
+              element={<Login onLoginSuccess={handleLoginSuccess} />}
+            />
+            <Route
+              path="/signup"
+              element={<Signup />}
+            />
 
-          {/* Protected Routes (Practical 7: Blocked for unauthenticated visitors) */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Home
-                  studentProfile={studentProfile}
-                  skillList={skillList}
-                  categorizedSkills={categorizedSkills}
-                  themeColor={themeColor}
-                />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected Routes (Practical 7: Blocked for unauthenticated visitors) */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Home
+                    studentProfile={studentProfile}
+                    skillList={skillList}
+                    categorizedSkills={categorizedSkills}
+                    themeColor={themeColor}
+                  />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Protected Practical 6 Full Stack Task Manager */}
-          <Route
-            path="/tasks"
-            element={
-              <ProtectedRoute>
-                <TaskManager />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected Practical 6 Full Stack Task Manager */}
+            <Route
+              path="/tasks"
+              element={
+                <ProtectedRoute>
+                  <TaskManager />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Protected Projects Page */}
-          <Route
-            path="/projects"
-            element={
-              <ProtectedRoute>
-                <Projects projectList={projectList} />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected Projects Page */}
+            <Route
+              path="/projects"
+              element={
+                <ProtectedRoute>
+                  <Projects projectList={projectList} />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Protected Contact Page */}
-          <Route
-            path="/contact"
-            element={
-              <ProtectedRoute>
-                <Contact studentProfile={studentProfile} />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected Contact Page */}
+            <Route
+              path="/contact"
+              element={
+                <ProtectedRoute>
+                  <Contact studentProfile={studentProfile} />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* 404 Not Found Page */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            {/* 404 Not Found Page */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </main>
 
       {/* 3. Reusable Footer Component */}

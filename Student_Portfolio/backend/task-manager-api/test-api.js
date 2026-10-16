@@ -103,7 +103,22 @@ async function runTests() {
 
     authToken = loginBody.token;
 
-    // 1F. Protected Profile (GET /me)
+    // 1F. Alternate Login Route Verification (POST /auth/login)
+    const authLoginRes = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testEmail,
+        password: testPassword
+      })
+    });
+    const authLoginBody = await authLoginRes.json();
+    assert(
+      authLoginRes.status === 200 && Boolean(authLoginBody.token),
+      'POST /auth/login returns status 200 and signed JWT token'
+    );
+
+    // 1G. Protected Profile (GET /me & GET /auth/me)
     const meRes = await fetch(`${BASE_URL}/me`, {
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
@@ -111,6 +126,15 @@ async function runTests() {
     assert(
       meRes.status === 200 && meBody.user && meBody.user.email === testEmail,
       'GET /me with Bearer token retrieves authenticated user profile'
+    );
+
+    const authMeRes = await fetch(`${BASE_URL}/auth/me`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const authMeBody = await authMeRes.json();
+    assert(
+      authMeRes.status === 200 && authMeBody.user && authMeBody.user.email === testEmail,
+      'GET /auth/me with Bearer token retrieves authenticated user profile'
     );
 
     // ========================================================================
@@ -188,6 +212,123 @@ async function runTests() {
       notFoundRes.status === 404,
       'GET /tasks/:id returns 404 for deleted task'
     );
+
+    // ========================================================================
+    // 3. Practical 9: In-Memory Caching, Invalidation & Stats Tests
+    // ========================================================================
+    console.log('\n--- STARTING PRACTICAL 9 CACHING & STATS TESTS ---\n');
+
+    // 3A. Initial stats endpoint verification
+    const statsInitialRes = await fetch(`${BASE_URL}/cache-stats`);
+    const statsInitial = await statsInitialRes.json();
+    assert(
+      statsInitialRes.status === 200 && typeof statsInitial.hits === 'number' && typeof statsInitial.misses === 'number',
+      'GET /cache-stats returns hits, misses, and keys array'
+    );
+
+    const prevHits = statsInitial.hits;
+    const prevMisses = statsInitial.misses;
+
+    // 3B. Create a fresh test task to test with
+    const testTaskRes = await fetch(`${BASE_URL}/tasks`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        title: 'Cache Benchmark Task',
+        description: 'Testing node-cache hit/miss & invalidation',
+        priority: 'high'
+      })
+    });
+    const testTaskBody = await testTaskRes.json();
+    const cacheTaskId = testTaskBody.task?._id;
+    assert(testTaskRes.status === 201 && Boolean(cacheTaskId), 'POST /tasks creates task for cache validation');
+
+    // 3C. First GET /tasks -> Cache MISS (populates all_tasks)
+    const getTasks1 = await fetch(`${BASE_URL}/tasks`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+    const statsAfterMiss = await (await fetch(`${BASE_URL}/cache-stats`)).json();
+    assert(
+      getTasks1.status === 200 && statsAfterMiss.keys.includes('all_tasks') && statsAfterMiss.misses > prevMisses,
+      'First GET /tasks causes cache MISS and populates "all_tasks" key'
+    );
+
+    // 3D. Second GET /tasks -> Cache HIT (retrieved from memory)
+    const hitsBeforeHit = statsAfterMiss.hits;
+    const getTasks2 = await fetch(`${BASE_URL}/tasks`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+    const statsAfterHit = await (await fetch(`${BASE_URL}/cache-stats`)).json();
+    assert(
+      getTasks2.status === 200 && statsAfterHit.hits === hitsBeforeHit + 1,
+      'Second GET /tasks causes cache HIT and increments hits counter'
+    );
+
+    // 3E. First GET /tasks/:id -> Cache MISS (populates task_id)
+    const missesBeforeId = statsAfterHit.misses;
+    const getTaskById1 = await fetch(`${BASE_URL}/tasks/${cacheTaskId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+    const statsAfterIdMiss = await (await fetch(`${BASE_URL}/cache-stats`)).json();
+    assert(
+      getTaskById1.status === 200 && statsAfterIdMiss.keys.includes(`task_${cacheTaskId}`) && statsAfterIdMiss.misses === missesBeforeId + 1,
+      `First GET /tasks/:id causes cache MISS and populates "task_${cacheTaskId}" key`
+    );
+
+    // 3F. Second GET /tasks/:id -> Cache HIT
+    const hitsBeforeIdHit = statsAfterIdMiss.hits;
+    const getTaskById2 = await fetch(`${BASE_URL}/tasks/${cacheTaskId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+    const statsAfterIdHit = await (await fetch(`${BASE_URL}/cache-stats`)).json();
+    assert(
+      getTaskById2.status === 200 && statsAfterIdHit.hits === hitsBeforeIdHit + 1,
+      'Second GET /tasks/:id causes cache HIT and increments hits counter'
+    );
+
+    // 3G. Cache Invalidation on PUT /tasks/:id
+    await fetch(`${BASE_URL}/tasks/${cacheTaskId}`, {
+      method: 'PUT',
+      headers: authHeaders,
+      body: JSON.stringify({ completed: true })
+    });
+    const statsAfterPut = await (await fetch(`${BASE_URL}/cache-stats`)).json();
+    assert(
+      !statsAfterPut.keys.includes('all_tasks') && !statsAfterPut.keys.includes(`task_${cacheTaskId}`),
+      'PUT /tasks/:id successfully invalidates both "all_tasks" and specific "task_:id" cache keys'
+    );
+
+    // Re-cache for DELETE test
+    await fetch(`${BASE_URL}/tasks`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+    await fetch(`${BASE_URL}/tasks/${cacheTaskId}`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+
+    // 3H. Cache Invalidation on DELETE /tasks/:id
+    await fetch(`${BASE_URL}/tasks/${cacheTaskId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const statsAfterDelete = await (await fetch(`${BASE_URL}/cache-stats`)).json();
+    assert(
+      !statsAfterDelete.keys.includes('all_tasks') && !statsAfterDelete.keys.includes(`task_${cacheTaskId}`),
+      'DELETE /tasks/:id successfully invalidates both "all_tasks" and specific "task_:id" cache keys'
+    );
+
+    // 3I. Cache Invalidation on POST /tasks
+    await fetch(`${BASE_URL}/tasks`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+    const statsBeforePost = await (await fetch(`${BASE_URL}/cache-stats`)).json();
+    assert(statsBeforePost.keys.includes('all_tasks'), '"all_tasks" is cached before POST');
+
+    const tempPost = await fetch(`${BASE_URL}/tasks`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ title: 'Temporary Invalidation Test Task' })
+    });
+    const tempPostData = await tempPost.json();
+    const statsAfterPost = await (await fetch(`${BASE_URL}/cache-stats`)).json();
+    assert(
+      !statsAfterPost.keys.includes('all_tasks'),
+      'POST /tasks successfully invalidates "all_tasks" cache key'
+    );
+
+    // Clean up temporary task
+    if (tempPostData.task?._id) {
+      await fetch(`${BASE_URL}/tasks/${tempPostData.task._id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+    }
 
   } catch (err) {
     console.error('Test execution failed:', err);

@@ -8,20 +8,9 @@ function Header({ name, role, university, themeColor, targetRoles }) {
     boxShadow: `0 20px 40px -15px ${themeColor}25`,
   };
 
-  const accentBadgeStyle = {
-    backgroundColor: `${themeColor}15`,
-    color: themeColor,
-    borderColor: `${themeColor}40`,
-  };
-
   return (
     <section className="hero-section" style={headerStyle}>
       <div className="hero-content">
-        <div className="hero-badge" style={accentBadgeStyle}>
-          <span className="pulse-icon">⚡</span>
-          <span>CO1 / PO3, PO5 • React Component Architecture</span>
-        </div>
-
         <h1 className="hero-title">
           Hi, I'm <span className="highlight-name" style={{ color: themeColor }}>{name}</span>
         </h1>

@@ -2749,5 +2749,17 @@
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
 }
 
+/* Practical 8: Lazy Loading Suspense Fallback */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--accent-primary, #06b6d4);
+  letter-spacing: 0.5px;
+}
+
 
 

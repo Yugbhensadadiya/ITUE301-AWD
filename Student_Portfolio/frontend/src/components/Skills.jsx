@@ -41,11 +41,7 @@ function Skills({ skillList, categorizedSkills }) {
       {/* Render skills based on active view */}
       {activeCategory === 'all' ? (
         <div className="skills-grid-container">
-          <div className="skills-card lab-spec-card">
-            <div className="skills-spec-badge">
-              <span>📋 Step 4 Implementation: Dynamic &lt;ul&gt; &amp; &lt;li&gt; map</span>
-            </div>
-            {/* Direct Step 4 implementation: unordered list mapped from skillList prop */}
+          <div className="skills-card">
             <ul className="skill-dynamic-list">
               {skillList.map((skill, index) => (
                 <li key={skill} className="skill-pill-item">
